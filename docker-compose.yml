@@ -10,9 +10,11 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/data          # PDF'lerin okunacağı klasör
+      - ./src:/app/src 
     environment:
       - CHROMA_HOST=chroma    # Servis adı = hostname (Docker magic!)
       - OLLAMA_HOST=ollama
+      - PYTHONPATH=/app/src
     depends_on:
       - chroma
       - ollama
@@ -33,19 +35,39 @@ services:
     volumes:
       - ollama_models:/root/.ollama  # Model dosyaları
 
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
   # 4. Airflow — Pipeline Scheduler
   airflow:
-    image: apache/airflow:2.8.0
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
-    ports:
-      - "8080:8080"           # Airflow UI
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./data:/data
-    command: standalone       # Dev için basit mod
-
+      image: apache/airflow:2.8.0
+      environment:
+        - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+        - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+        - AIRFLOW__CORE__LOAD_EXAMPLES=False
+        - PYTHONPATH=/src
+        - _PIP_ADDITIONAL_REQUIREMENTS=sentence-transformers pymupdf chromadb httpx
+      ports:
+        - "8080:8080"
+      volumes:
+        - ./airflow/dags:/opt/airflow/dags
+        - ./data:/data
+        - ./src:/src
+      depends_on:
+        postgres:
+          condition: service_healthy
+      command: standalone
 volumes:
   chroma_data:
   ollama_models:
+  postgres_data:

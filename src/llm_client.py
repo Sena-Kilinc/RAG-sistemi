@@ -34,13 +34,16 @@ async def ask_llm(prompt: str, model: str = "mistral") -> str:
     - LLM cevap üretmesi saniyeler sürebilir
     - Bu sürede diğer istekleri de karşılayabilelim (non-blocking)
     """
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=500.0) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
             json={
                 "model": model,
                 "prompt": prompt,
-                "stream": False  # Şimdilik tam cevap bekleyelim
+                "stream": False,  # Şimdilik tam cevap bekleyelim
+                "options": {
+                    "num_predict": 512,   # Max token sınırı — cevap kısa tutulur, hızlanır
+                }
             }
         )
         

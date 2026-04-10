@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import shutil
 import os
 
-from embedder import pdf_to_text, chunk_text
+from embedder import pdf_to_text, chunk_text      # aynı kalır
 from retriever import store_chunks, find_relevant_chunks
 from llm_client import build_prompt, ask_llm
 
